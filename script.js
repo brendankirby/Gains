@@ -38,10 +38,32 @@ function createTable(data) {
 
         members.forEach(member => {
             const cell = row.insertCell();
-            cell.textContent = rowData[member];
+            cell.textContent = rowData[member] ? '✅' : '❌';
+            cell.setAttribute('data-member', member);
+            cell.setAttribute('data-date', date);
+            cell.addEventListener('click', toggleCell);
         });
     });
 
     tableContainer.appendChild(table);
 }
 
+function toggleCell(event) {
+    const cell = event.target;
+    const member = cell.getAttribute('data-member');
+    const date = cell.getAttribute('data-date');
+
+    // Toggle between ✅ and ❌
+    cell.textContent = cell.textContent === '✅' ? '❌' : '✅';
+
+    // Update the data in the JSON object
+    fetch('ledger.json')
+    .then(response => response.json())
+    .then(data => {
+        data[date][member] = cell.textContent === '✅';
+        // Optionally, you can send the updated data to a server here
+    })
+    .catch(error => {
+        console.error('Error updating data:', error);
+    });
+}
