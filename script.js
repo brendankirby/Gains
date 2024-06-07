@@ -3,6 +3,8 @@ document.addEventListener("DOMContentLoaded", function() {
     .then(response => response.json())
     .then(data => {
         createTable(data);
+        displayEarnings(data);
+        displayIndividualEarnings(data);
     })
     .catch(error => {
         console.error('Error fetching data:', error);
@@ -61,9 +63,89 @@ function toggleCell(event) {
     .then(response => response.json())
     .then(data => {
         data[date][member] = cell.textContent === '✅';
-        // Optionally, you can send the updated data to a server here
+        updateLedger(data);
     })
     .catch(error => {
         console.error('Error updating data:', error);
+    });
+}
+
+function updateLedger(data) {
+    // Send a PUT request to update ledger.json
+    fetch('ledger.json', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (response.ok) {
+            console.log('Ledger updated successfully');
+            displayEarnings(data);
+            displayIndividualEarnings(data);
+        } else {
+            console.error('Failed to update ledger:', response.statusText);
+        }
+    })
+    .catch(error => {
+        console.error('Error updating ledger:', error);
+    });
+}
+
+function displayEarnings(data) {
+    const earningsContainer = document.getElementById('earnings-container');
+    const members = Object.keys(data[Object.keys(data)[0]]);
+    const earnings = {};
+
+    // Calculate earnings/debt for each member
+    members.forEach(member => {
+        earnings[member] = 0;
+        Object.values(data).forEach(workout => {
+            const totalWorkouts = Object.values(workout).filter(value => value).length;
+            earnings[member] += totalWorkouts === members.length - 1 ? 1 : 0;
+        });
+    });
+
+    // Display earnings/debt
+    earningsContainer.innerHTML = '<h2>Earnings/Debt</h2>';
+    members.forEach(member => {
+        const paragraph = document.createElement('p');
+        paragraph.textContent = `${member}: $${earnings[member]}`;
+        earningsContainer.appendChild(paragraph);
+    });
+}
+
+function displayIndividualEarnings(data) {
+    const individualContainer = document.getElementById('individual-container');
+    const members = Object.keys(data[Object.keys(data)[0]]);
+    const individualEarnings = {};
+
+    // Calculate individual earnings/debt
+    members.forEach(member => {
+        individualEarnings[member] = {};
+        members.forEach(otherMember => {
+            if (otherMember !== member) {
+                individualEarnings[member][otherMember] = 0;
+                Object.values(data).forEach(workout => {
+                    if (!workout[member]) {
+                        individualEarnings[member][otherMember] += workout[otherMember] ? 1 : 0;
+                    }
+                });
+            }
+        });
+    });
+
+    // Display individual earnings/debt
+    individualContainer.innerHTML = '<h2>Individual Earnings/Debt</h2>';
+    members.forEach(member => {
+        const heading = document.createElement('h3');
+        heading.textContent = member;
+        individualContainer.appendChild(heading);
+        Object.keys(individualEarnings[member]).forEach(otherMember => {
+            const paragraph = document.createElement('p');
+            paragraph.textContent = `${otherMember}: $${individualEarnings[member][otherMember]}`;
+            individualContainer.appendChild(paragraph);
+        });
     });
 }
